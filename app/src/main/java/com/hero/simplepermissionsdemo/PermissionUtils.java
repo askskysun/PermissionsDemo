@@ -6,7 +6,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -17,12 +16,22 @@ import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.Lifecycle;
+
+import com.tbruyelle.rxpermissions3.Permission;
+import com.tbruyelle.rxpermissions3.RxPermissions;
+import io.reactivex.rxjava3.functions.Consumer;
 
 /**
  * <pre>
  * 权限工具类
  * </pre>
  * Author by sun, Email 1910713921@qq.com, Date on 2021/11/1
+ *
+ * RxPermissions使用注意事项：
+ * 1、使用RxPermissions的FragmentActivity或者Fragment的onRequestPermissionsResult方法不能删除super方法，否则收不到回调
+ * 2、注意gradle依赖版本对应rxjava的版本，即RxPermissions3对应rxjava3，2则对应2
  */
 public class PermissionUtils {
     private static final String TAG = "PermissionUtils";
@@ -172,29 +181,29 @@ public class PermissionUtils {
      * 申请权限
      *
      * @param ctx
-     * @param need
+     * @param permissions
      */
-    public static void requestPermission(final Activity ctx, String[] need, int requestCode) {
-        if (ctx == null || need == null || need.length == 0) {
+    public static void requestPermission(final Activity ctx, String[] permissions, int requestCode) {
+        if (ctx == null || permissions == null || permissions.length == 0) {
             return;
         }
         //申请权限
-        ActivityCompat.requestPermissions(ctx, need, requestCode);
+        ActivityCompat.requestPermissions(ctx, permissions, requestCode);
     }
 
     /**
      * 检查是否有权限 无权限则申请
      *
      * @param ctx
-     * @param need
+     * @param permissions
      * @param requestCode
      * @return true：有权限；   false：无权限
      */
-    public static boolean requestPermissionAndCheck(final Activity ctx, String[] need, int requestCode) {
-        if (hasPermissions(ctx, need)) {
+    public static boolean requestPermissionAndCheck(final Activity ctx, String[] permissions, int requestCode) {
+        if (hasPermissions(ctx, permissions)) {
             return true;
         }
-        requestPermission(ctx, need, requestCode);
+        requestPermission(ctx, permissions, requestCode);
         return false;
     }
 
@@ -202,22 +211,22 @@ public class PermissionUtils {
      * 检查是否有权限 无权限则申请
      *
      * @param ctx
-     * @param need
+     * @param permissions
      * @return true：有权限；   false：无权限
      */
-    public static boolean requestPermissionAndCheck(final Activity ctx, String[] need) {
-        return requestPermissionAndCheck(ctx, need, GET_PERMISSION_REQUEST);
+    public static boolean requestPermissionAndCheck(final Activity ctx, String[] permissions) {
+        return requestPermissionAndCheck(ctx, permissions, GET_PERMISSION_REQUEST);
     }
 
     /**
      * 申请权限
      *
      * @param ctx
-     * @param need
+     * @param permissions
      */
-    public static void requestPermission(final Activity ctx, String[] need) {
+    public static void requestPermission(final Activity ctx, String[] permissions) {
         //申请权限
-        requestPermission(ctx, need, GET_PERMISSION_REQUEST);
+        requestPermission(ctx, permissions, GET_PERMISSION_REQUEST);
     }
 
     /**
@@ -245,7 +254,9 @@ public class PermissionUtils {
         for (int i = 0; i < grantResults.length; i++) {
             if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
                 //处理允许权限后的操作
-                Log.i(TAG, "处理允许权限后的操作");
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "处理允许权限后的操作");
+                }
                 continue;
             }
             String permission = permissions[i];
@@ -253,13 +264,17 @@ public class PermissionUtils {
             if (shouldShow) {
                 //禁止，但没有选择“以后不再询问”，以后申请权限，会继续弹出提示
                 //处理用户点击禁止后的操作
-                Log.i(TAG, "禁止，但没有选择“以后不再询问”，以后申请权限，会继续弹出提示\n" + "处理用户点击禁止后的操作");
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "禁止，但没有选择“以后不再询问”，以后申请权限，会继续弹出提示\n" + "处理用户点击禁止后的操作");
+                }
                 return false;
             } else {
                 //场景一：选择“禁止并不再询问”；场景二：用户点击系统申请权限弹出框外部，使对话框消失；场景三：再此之前已经点击过"禁止并不再询问",调用申请权限则直接回调到此处。
                 //Toast提示用户前往设置允许权限
-                Log.i(TAG, "场景一：选择“禁止并不再询问”；场景二：用户点击系统申请权限弹出框外部，使对话框消失；场景三：再此之前已经点击过\"禁止并不再询问\",调用申请权限则直接回调到此处。\n"
-                        + "Toast提示用户前往设置允许权限");
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "场景一：选择“禁止并不再询问”；场景二：用户点击系统申请权限弹出框外部，使对话框消失；场景三：再此之前已经点击过\"禁止并不再询问\",调用申请权限则直接回调到此处。\n"
+                            + "Toast提示用户前往设置允许权限");
+                }
                 if (isToastTip) {
                     String authorizationStr = "请授权";
                     String permissionStr = "权限";
@@ -329,5 +344,222 @@ public class PermissionUtils {
         dialog.setCanceledOnTouchOutside(false);
         dialog.show();
         return dialog;
+    }
+
+    /**
+     * 申请权限   简单回调
+     * 多个权限，则是所有权限都通过才回调true
+     * @param activity
+     * @param permissionStr
+     * @param callback
+     */
+    public static void requestPermissionSimpleCallback(FragmentActivity activity, OnPermissionsSimpleCallback callback, String... permissionStr) {
+        if (callback == null) {
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "requestPermissionCallback: callback是空");
+            }
+            return;
+        }
+        if (activity == null || permissionStr == null || permissionStr.length == 0) {
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "requestPermissionCallback: activity == null || TextUtils.isEmpty(permission)");
+            }
+            callback.refuse();
+            return;
+        }
+
+
+        RxPermissions permissions = new RxPermissions(activity);
+        permissions.setLogging(true);
+        permissions.request(permissionStr).subscribe(new Consumer<Boolean>() {
+            @Override
+            public void accept(Boolean aBoolean) {
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "requestPermissionCallback: accept: " + aBoolean);
+                }
+
+                if (callback == null) {
+                    return;
+                }
+
+                if (aBoolean != null && aBoolean) {
+                    callback.allow();
+                } else {
+                    callback.refuse();
+                }
+            }
+        });
+    }
+
+    /**
+     * 申请权限   却分三种场景回调
+     * RxPermissions.requestEach 方法参数为String... ，因此封装方法中参数permissionStr可根据需求自行修改为 String[]或String...
+     * 多个权限则通过方法 permission.name.equalsIgnoreCase() 来区分
+     *
+     * @param activity
+     * @param permissionStr
+     * @param callback
+     */
+    public static void requestPermissionEachCallBack(
+            FragmentActivity activity, String permissionStr, OnPermissionsEachCallback callback) {
+        if (callback == null) {
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "requestPermissionEachCallBack: callback是空");
+            }
+            return;
+        }
+        if (activity == null || TextUtils.isEmpty(permissionStr)) {
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "requestPermissionEachCallBack: activity == null || TextUtils.isEmpty(permissionStr)");
+            }
+            callback.refuse();
+            return;
+        }
+        RxPermissions permissions = new RxPermissions(activity);
+        permissions.setLogging(true);
+        permissions.requestEach(permissionStr)
+                .subscribe(new Consumer<Permission>() {
+                    @Override
+                    public void accept(Permission permission) throws Exception {
+                        if (callback == null) {
+                            if (BuildConfig.DEBUG) {
+                                Log.i(TAG, "requestPermissionEachCallBack: callback是空");
+                            }
+                            return;
+                        }
+
+                        if (!permission.name.equalsIgnoreCase(permissionStr)) {
+                            return;
+                        }
+
+                        if (permission.granted) {
+                            //处理允许权限后的操作
+                            if (BuildConfig.DEBUG) {
+                                Log.i(TAG, "处理允许权限后的操作");
+                            }
+                            callback.allow();
+                            return;
+                        }
+                        if (permission.shouldShowRequestPermissionRationale) {
+                            //禁止，但没有选择“以后不再询问”，以后申请权限，会继续弹出提示
+                            //处理用户点击禁止后的操作
+                            if (BuildConfig.DEBUG) {
+                                Log.i(TAG, "禁止，但没有选择“以后不再询问”，以后申请权限，会继续弹出提示\n" + "处理用户点击禁止后的操作");
+                            }
+                            callback.refuse();
+                            return;
+                        }
+
+                        //场景一：选择“禁止并不再询问”；
+                        //场景二：用户点击系统申请权限弹出框外部，使对话框消失；
+                        //场景三：再此之前已经点击过"禁止并不再询问",调用申请权限则直接回调到此处。
+                        //Toast提示用户前往设置允许权限
+                        if (BuildConfig.DEBUG) {
+                            Log.i(TAG, "场景一：选择“禁止并不再询问”；场景二：用户点击系统申请权限弹出框外部，使对话框消失；场景三：再此之前已经点击过\"禁止并不再询问\",调用申请权限则直接回调到此处。\n"
+                                    + "Toast提示用户前往设置允许权限");
+                        }
+                        callback.refuseAndNotAskAgain();
+                    }
+                });
+    }
+
+    /**
+     * 申请权限 多个权限申请 合并结果处理 却分三种场景回调
+     * @param activity
+     * @param permissionStr
+     * @param callback
+     */
+    public static void requestPermissionEachCombinedCallBack(
+            FragmentActivity activity, OnPermissionsEachCallback callback, String... permissionStr) {
+        if (callback == null) {
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "requestPermissionEachCallBack: callback是空");
+            }
+            return;
+        }
+        if (activity == null || permissionStr == null || permissionStr.length == 0) {
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "requestPermissionEachCallBack: activity == null || TextUtils.isEmpty(permissionStr)");
+            }
+            callback.refuse();
+            return;
+        }
+        RxPermissions permissions = new RxPermissions(activity);
+        permissions.setLogging(true);
+        permissions.requestEachCombined(permissionStr)
+                .subscribe(new Consumer<Permission>() {
+                    @Override
+                    public void accept(Permission permission) throws Exception {
+                        if (callback == null) {
+                            if (BuildConfig.DEBUG) {
+                                Log.i(TAG, "requestPermissionEachCallBack: callback是空");
+                            }
+                            return;
+                        }
+
+                        if (permission.granted) {
+                            //处理允许权限后的操作
+                            if (BuildConfig.DEBUG) {
+                                Log.i(TAG, "处理允许权限后的操作");
+                            }
+                            callback.allow();
+                            return;
+                        }
+                        if (permission.shouldShowRequestPermissionRationale) {
+                            //禁止，但没有选择“以后不再询问”，以后申请权限，会继续弹出提示
+                            //处理用户点击禁止后的操作
+                            if (BuildConfig.DEBUG) {
+                                Log.i(TAG, "禁止，但没有选择“以后不再询问”，以后申请权限，会继续弹出提示\n" + "处理用户点击禁止后的操作");
+                            }
+                            callback.refuse();
+                            return;
+                        }
+
+                        //场景一：选择“禁止并不再询问”；
+                        //场景二：用户点击系统申请权限弹出框外部，使对话框消失；
+                        //场景三：再此之前已经点击过"禁止并不再询问",调用申请权限则直接回调到此处。
+                        //Toast提示用户前往设置允许权限
+                        if (BuildConfig.DEBUG) {
+                            Log.i(TAG, "场景一：选择“禁止并不再询问”；场景二：用户点击系统申请权限弹出框外部，使对话框消失；场景三：再此之前已经点击过\"禁止并不再询问\",调用申请权限则直接回调到此处。\n"
+                                    + "Toast提示用户前往设置允许权限");
+                        }
+                        callback.refuseAndNotAskAgain();
+                    }
+                });
+    }
+
+    /**
+     * 申请权限 简单返回
+     */
+    interface OnPermissionsSimpleCallback {
+        /**
+         * 允许
+         */
+        void allow();
+
+        /**
+         * 拒绝
+         */
+        void refuse();
+    }
+
+    /**
+     * 申请权限 详细场景返回
+     */
+    interface OnPermissionsEachCallback {
+        /**
+         * 允许
+         */
+        void allow();
+
+        /**
+         * 拒绝
+         */
+        void refuse();
+
+        /**
+         * 拒绝并不再提示
+         */
+        void refuseAndNotAskAgain();
     }
 }

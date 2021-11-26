@@ -9,12 +9,37 @@
     tools:context=".MainActivity">
 
     <TextView
-        android:id="@+id/text1"
+        android:id="@+id/textSimple"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="30dp"
-        android:text="申请单个权限"
+        android:text="简单方式申请单个权限"
         android:textSize="30dp" />
 
+    <TextView
+        android:id="@+id/textSimpleRxPermission"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="30dp"
+        android:text="RxPermission申请单个权限Simple"
+        android:textSize="30dp" />
+    <TextView
+        android:id="@+id/textEachRxPermission"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="30dp"
+        android:text="RxPermission申请单个权限详细"
+        android:textSize="30dp" />
+
+    <TextView
+        android:id="@+id/textEachCombinedRxPermission"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="30dp"
+        android:text="RxPermission申请多个权限合并结果"
+        android:textSize="30dp" />
 </LinearLayout>
