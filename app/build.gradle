@@ -37,7 +37,6 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
-    //经测试无法正常回调，原因未知
     /*  需要多加对应版本的rxjava，0.12对应rxjava3   */
     // RxJava
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
