@@ -392,7 +392,7 @@ public class PermissionUtils {
     }
 
     /**
-     * 申请权限   却分三种场景回调
+     * 申请权限   区分三种场景回调
      * RxPermissions.requestEach 方法参数为String... ，因此封装方法中参数permissionStr可根据需求自行修改为 String[]或String...
      * 多个权限则通过方法 permission.name.equalsIgnoreCase() 来区分
      *
