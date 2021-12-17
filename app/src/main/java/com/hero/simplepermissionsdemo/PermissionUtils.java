@@ -21,6 +21,7 @@ import androidx.lifecycle.Lifecycle;
 
 import com.tbruyelle.rxpermissions3.Permission;
 import com.tbruyelle.rxpermissions3.RxPermissions;
+
 import io.reactivex.rxjava3.functions.Consumer;
 
 /**
@@ -28,7 +29,7 @@ import io.reactivex.rxjava3.functions.Consumer;
  * 权限工具类
  * </pre>
  * Author by sun, Email 1910713921@qq.com, Date on 2021/11/1
- *
+ * <p>
  * RxPermissions使用注意事项：
  * 1、使用RxPermissions的FragmentActivity或者Fragment的onRequestPermissionsResult方法不能删除super方法，否则收不到回调
  * 2、注意gradle依赖版本对应rxjava的版本，即RxPermissions3对应rxjava3，2则对应2
@@ -349,6 +350,7 @@ public class PermissionUtils {
     /**
      * 申请权限   简单回调
      * 多个权限，则是所有权限都通过才回调true
+     *
      * @param activity
      * @param permissionStr
      * @param callback
@@ -392,7 +394,7 @@ public class PermissionUtils {
     }
 
     /**
-     * 申请权限   区分三种场景回调
+     * 单个权限申请   区分三种场景回调
      * RxPermissions.requestEach 方法参数为String... ，因此封装方法中参数permissionStr可根据需求自行修改为 String[]或String...
      * 多个权限则通过方法 permission.name.equalsIgnoreCase() 来区分
      *
@@ -464,7 +466,31 @@ public class PermissionUtils {
     }
 
     /**
-     * 申请权限 多个权限申请 合并结果处理 却分三种场景回调
+     * 多个权限申请   区分三种场景回调
+     * 多个权限则通过方法 permission.name.equalsIgnoreCase() 来区分
+     * 相关参照requestPermissionEachCallBack()方法判断
+     * @param activity
+     * @param permissionStr
+     * @param callback
+     */
+    public static void requestPermissionsEachCallBack(
+            FragmentActivity activity, Consumer<Permission> callback, String... permissionStr) {
+        if (callback == null || activity == null || permissionStr == null || permissionStr.length == 0) {
+            if (BuildConfig.DEBUG) {
+                Log.i(TAG, "requestPermissionsEachCallBack: callback == null || activity == null || permissionStr == null || permissionStr.length == 0");
+            }
+            return;
+        }
+
+        RxPermissions permissions = new RxPermissions(activity);
+        permissions.setLogging(true);
+        permissions.requestEach(permissionStr)
+                .subscribe(callback);
+    }
+
+    /**
+     * 申请权限 多个权限申请 合并结果处理 区分三种场景回调
+     *
      * @param activity
      * @param permissionStr
      * @param callback
