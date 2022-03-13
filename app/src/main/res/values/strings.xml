@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">SimplePermissionsDemo</string>
+
+    <string name="permission_authorization">请前往设置授权</string>
+    <string name="permission">权限</string>
+    <string name="permission_apply">申请权限</string>
+    <string name="permission_deny_effect_exit">以下权限为应用必须权限，拒绝将导致应用退出:\n%1$s</string>
+    <string name="permission_deny_effect_function">以下权限为应用所需权限，拒绝将导致应用相应功能不可用:\n%1$s</string>
+    <string name="exit_app">退出应用</string>
+    <string name="cancel">取消</string>
+
 </resources>
